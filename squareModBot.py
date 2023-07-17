@@ -20,7 +20,7 @@ COMMUNITY_CONFIGS = {
 				"actions": [
 					{
 						"type": "postComment",
-						"message": "Dieser Post wurde gesperrt, da die verlinkte URL schon hier diskutiert wird: {existingPost[post][ap_id]}."
+						"message": "This post has been locked because the linked URL is already discussed here: {existingPost[post][ap_id]}."
 					},
 					{
 						"type": "lock",
@@ -35,7 +35,7 @@ COMMUNITY_CONFIGS = {
 				"actions": [
 					{
 						"type": "postComment",
-						"message": "Dieser Post wurde gesperrt, da böse Wörter verboten sind!"
+						"message": "This post was locked because bad words aren't allowed here!"
 					},
 					{
 						"type": "lock",
