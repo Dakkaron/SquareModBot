@@ -5,53 +5,9 @@ from time import sleep
 from pythorhead import Lemmy
 from pythorhead.types.sort import SortType
 import re
-
-API_URL = "https://feddit.de"
-USERNAME = "BOT NAME"
-PASSWORD = "BOT PASSWORD"
-RATE_LIMIT_SECONDS = 0
-CHECK_INTERVAL_SECONDS = 60
-
-COMMUNITY_CONFIGS = {
-	"bottest": {
-		"triggers": [
-			{
-				"trigger": "post_DuplicateUrl",
-				"actions": [
-					{
-						"type": "postComment",
-						"message": "This post has been locked because the linked URL is already discussed here: {existingPost[post][ap_id]}."
-					},
-					{
-						"type": "lock",
-						"value": True
-					}
-				]
-			},
-			{
-				"trigger": "post_Regex",
-				"fields": ["url", "name", "body"],
-				"regex": ".*reddit.*",
-				"actions": [
-					{
-						"type": "postComment",
-						"message": "This post was locked because bad words aren't allowed here!"
-					},
-					{
-						"type": "lock",
-						"value": True
-					}
-				]
-			}
-		]
-	}
-}
+import config
 
 communityData = {}
-
-
-lemmy = Lemmy(API_URL)
-lemmy.log_in(USERNAME, PASSWORD)
 
 def getAllPostsOfCommunity(communityName):
 	res = []
@@ -62,7 +18,7 @@ def getAllPostsOfCommunity(communityName):
 		print(f"Page: {page}")
 		current = lemmy.post.list(community_name=communityName, limit=50, page=page, sort=SortType.New)
 		res += current
-		sleep(RATE_LIMIT_SECONDS)
+		sleep(config.RATE_LIMIT_SECONDS)
 	return res
 
 def getPostUrlMap(allPosts):
@@ -82,7 +38,7 @@ def getNewPosts(communityName, oldPosts):
 		newPosts += [ x for x in current if x["post"]["id"] not in oldPostIds ]
 		if any([ x for x in current if (not isPostFeatured(x)) and x["post"]["id"] in oldPostIds ]):
 			break
-		sleep(RATE_LIMIT_SECONDS)
+		sleep(config.RATE_LIMIT_SECONDS)
 	print(f"New posts found: {len(newPosts)}")
 	return newPosts
 
@@ -92,13 +48,13 @@ def checkForNewDuplicates(newPosts, oldPosts):
 
 def checkTrigger(trigger, newPosts, oldPosts):
 	actionSubjectList = []
-	if trigger["trigger"] == "post_DuplicateUrl":
+	if trigger["triggerType"] == "post_DuplicateUrl":
 		newDuplicates = checkForNewDuplicates(newPosts, oldPosts)
 		actionSubjectList = [{
 				"targetPost" : x[0],
 				"existingPost" : x[1]
 			} for x in newDuplicates]
-	elif trigger["trigger"] == "post_Regex":
+	elif trigger["triggerType"] == "post_Regex":
 		actionSubjectList = [{
 				"targetPost": x,
 				"existingPost": x
@@ -116,9 +72,13 @@ def executeActions(trigger, actionSubjectList):
 				postId = subject['targetPost']['post']['id']
 				print(f"Locking post: {postId}")
 				lemmy.post.lock(post_id = postId, locked = action["value"])
+			elif action["type"] == "remove":
+				postId = subject['targetPost']['post']['id']
+				print(f"Removing post: {postId}")
+				lemmy.post.remove(post_id = postId, removed = action["value"], reason = action["reason"])
 
 def processTriggers(newPosts, communityData):
-	for trigger in COMMUNITY_CONFIGS[community]["triggers"]:
+	for trigger in config.COMMUNITY_CONFIGS[community]["triggers"]:
 		actionSubjectList = checkTrigger(trigger, newPosts, communityData[community]["oldPosts"])
 		executeActions(trigger, actionSubjectList)
 
@@ -132,17 +92,21 @@ def getPostsRegexMatch(regex, posts, fields):
 	return out
 
 def initializeCommunities():
-	for community in COMMUNITY_CONFIGS:
+	for community in config.COMMUNITY_CONFIGS:
 		print(f"## Reading all existing posts in {community}")
 		communityData[community] = {}
 		communityData[community]["oldPosts"] = getAllPostsOfCommunity(community)
 	print("## Done reading posts. Starting loop.\n")
 
 if __name__ == "__main__":
+	lemmy = Lemmy(config.API_URL)
+	if not lemmy.log_in(config.USERNAME, config.PASSWORD):
+		print("Login failed. Exiting.")
+		exit(1)
 	initializeCommunities()
 	while True:
-		sleep(CHECK_INTERVAL_SECONDS)
-		for community in COMMUNITY_CONFIGS:
+		sleep(config.CHECK_INTERVAL_SECONDS)
+		for community in config.COMMUNITY_CONFIGS:
 			print(f"## Start polling community \"{community}\"")
 			newPosts = getNewPosts(community, communityData[community]["oldPosts"])
 			processTriggers(newPosts, communityData)

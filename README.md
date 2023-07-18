@@ -14,7 +14,7 @@ After that you can run SquareModBot like this:
 
 Before running it, you need to configure SquareModBot.
 
-First, open squareModBot.py and fill out these fields:
+First, open config.py and fill out these fields:
 
 ```
 API_URL = "https://feddit.de"
@@ -53,12 +53,9 @@ COMMUNITY_CONFIGS = {
 				"regex": ".*reddit.*",
 				"actions": [
 					{
-						"type": "postComment",
-						"message": "This post was locked because bad words aren't allowed here!"
-					},
-					{
-						"type": "lock",
-						"value": True
+						"type": "remove",
+						"value": True,
+						"reason": "This post was removed because bad words aren't allowed here!"
 					}
 				]
 			}
@@ -78,3 +75,4 @@ When a trigger is triggered, its `actions` will get executed from top to bottom.
 
 - `postComment`: Creates a comment to the post. The content of the comment will be the `message`.
 - `lock`: Locks or unlocks the post. (`"value": True` means lock, `"value": False` means unlock)
+- `remove`: Removes or restores the post. (`"value": True` means remove, `"value": False means restore, `"reason"` contains the reason that is given in the modlog)
