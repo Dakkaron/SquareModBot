@@ -14,7 +14,7 @@ After that you can run SquareModBot like this:
 
 Before running it, you need to configure SquareModBot.
 
-First, open config.py and fill out these fields:
+First, copy config.py.example to config.py, open config.py and fill out these fields:
 
 ```
 API_URL = "https://feddit.de"

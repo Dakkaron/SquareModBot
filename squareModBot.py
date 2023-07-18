@@ -5,7 +5,13 @@ from time import sleep
 from pythorhead import Lemmy
 from pythorhead.types.sort import SortType
 import re
-import config
+try:
+	import config
+except:
+	print("ERROR: Configuration missing.")
+	print("       Please copy config.py.example to config.py and adjust the configuration.")
+	print("       Exiting now.")
+	exit(1)
 
 communityData = {}
 
