@@ -1,4 +1,4 @@
-# SquareModBot
+# SquareModBot for Lemmy
 
 This is a simple early access mod bot for Lemmy.
 
