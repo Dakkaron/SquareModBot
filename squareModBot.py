@@ -5,6 +5,8 @@ from time import sleep
 from pythorhead import Lemmy
 from pythorhead.types.sort import SortType
 import re
+import json
+
 try:
 	import config
 except:
@@ -15,31 +17,21 @@ except:
 
 communityData = {}
 
-def getAllPostsOfCommunity(communityName):
-	res = []
-	page = 0
-	current = [None]
-	while current:
-		page += 1
-		print(f"Page: {page}")
-		current = lemmy.post.list(community_name=communityName, limit=50, page=page, sort=SortType.New)
-		res += current
-		sleep(config.RATE_LIMIT_SECONDS)
-	return res
-
 def getPostUrlMap(allPosts):
 	return { x["post"]["url"] : x for x in allPosts if "url" in x["post"] }
 
 def isPostFeatured(post):
 	return post["post"]["featured_community"] or post["post"]["featured_local"]
 
-def getNewPosts(communityName, oldPosts):
+def getNewPosts(communityName, oldPosts, printPageNr=False):
 	oldPostIds = [ x["post"]["id"] for x in oldPosts ]
 	newPosts = []
 	current = [None]
 	page = 0
 	while current:
 		page += 1
+		if printPageNr:
+			print(f"Page: {page}")
 		current = lemmy.post.list(community_name=communityName, limit=50, page=page, sort=SortType.New)
 		newPosts += [ x for x in current if x["post"]["id"] not in oldPostIds ]
 		if any([ x for x in current if (not isPostFeatured(x)) and x["post"]["id"] in oldPostIds ]):
@@ -97,11 +89,20 @@ def getPostsRegexMatch(regex, posts, fields):
 				break
 	return out
 
-def initializeCommunities():
+def initializeCommunityData():
+	global communityData
+	try:
+		with open("communityDataCache.json", "r") as f:
+			communityData = json.load(f)
+			print("## Using cached community data")
+	except:
+		print("## Couldn't find cached community data, reading from API instead")
 	for community in config.COMMUNITY_CONFIGS:
-		print(f"## Reading all existing posts in {community}")
-		communityData[community] = {}
-		communityData[community]["oldPosts"] = getAllPostsOfCommunity(community)
+		if community not in communityData:
+			communityData[community] = {}
+		if "oldPosts" not in communityData[community]:
+			print(f"## Reading all existing posts in {community}")
+			communityData[community]["oldPosts"] = getNewPosts(community, [], True)
 	print("## Done reading posts. Starting loop.\n")
 
 if __name__ == "__main__":
@@ -109,12 +110,14 @@ if __name__ == "__main__":
 	if not lemmy.log_in(config.USERNAME, config.PASSWORD):
 		print("Login failed. Exiting.")
 		exit(1)
-	initializeCommunities()
+	initializeCommunityData()
 	while True:
-		sleep(config.CHECK_INTERVAL_SECONDS)
 		for community in config.COMMUNITY_CONFIGS:
 			print(f"## Start polling community \"{community}\"")
 			newPosts = getNewPosts(community, communityData[community]["oldPosts"])
 			processTriggers(newPosts, communityData)
 			communityData[community]["oldPosts"] += newPosts
 		print("## Finished polling all communities\n")
+		with open("communityDataCache.json", "w") as f:
+			json.dump(communityData, f)
+		sleep(config.CHECK_INTERVAL_SECONDS)
