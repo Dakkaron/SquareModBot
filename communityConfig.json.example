@@ -1,0 +1,51 @@
+{
+	"COMMUNITY NAME": {
+		"triggers": [
+			{
+				"triggerType": "post_DuplicateUrl",
+				"actions": [
+					{
+						"type": "postComment",
+						"content": "This post has been locked because the linked URL is already discussed here: {existingPost.post.ap_id}."
+					},
+					{
+						"type": "lock",
+						"value": true
+					}
+				]
+			},
+			{
+				"triggerType": "post_Regex",
+				"fields": ["url", "name", "body"],
+				"regex": ".*reddit.*",
+				"actions": [
+					{
+						"type": "remove",
+						"value": true,
+						"reason": "This post was removed because bad words aren't allowed here!"
+					}
+				]
+			},
+			{
+				"triggerType": "comment_Regex",
+				"regex": ".*reddit.*",
+				"actions": [
+					{
+						"type": "edit",
+						"content": "[Removed by moderator. We don't want this kind of talk here.]"
+					}
+				]
+			},
+			{
+				"triggerType": "comment_Regex",
+				"regex": ".*lego.*",
+				"actions": [
+					{
+						"type": "postComment",
+						"content": "Seems like you are talking about Lego. Be aware, they might sue you if you write anything they don't like."
+					}
+				]
+			}
+		]
+	}
+}

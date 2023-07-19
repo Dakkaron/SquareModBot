@@ -28,10 +28,10 @@ Now the bot should be able to login.
 
 Next you need to setup the communities, triggers and actions for the bot.
 
-For that, fill out the dict in the variable `COMMUNITY_CONFIGS`:
+For that, copy `communityConfig.json.example` to `communityConfig.json` and edit it:
 
 ```
-COMMUNITY_CONFIGS = {
+{
 	"COMMUNITY NAME": {
 		"triggers": [
 			{
@@ -64,7 +64,7 @@ COMMUNITY_CONFIGS = {
 }
 ```
 
-You need to put the name of the community as the key of the values in `COMMUNITY_CONFIGS`. In the current example, the community that is managed is called `"COMMUNITY NAME"`. One instance of SquareBotMod can moderate multiple communities, so you can add more communities to the dict if you want to.
+You need to put the name of the community as the key of the values in the top level dict. In the current example, the community that is managed is called `"COMMUNITY NAME"`. One instance of SquareBotMod can moderate multiple communities, so you can add more communities to the dict if you want to.
 
 Next, each community has a list of triggers. Each trigger has a `triggerType` that determines what the trigger reacts to. The currently available `triggerType`s are:
 
@@ -91,3 +91,17 @@ These data structures are the full post/comment object as returned by the API. T
 "{existingPost.post.ap_id}" -> returns the absolute URL to the post.
 "{targetComment.comment.content}" -> returns the text of the comment.
 ```
+
+### A note on Regexes
+
+Bad regexes coupled with a fitting text input can lead to exponential run times. To avoid the bot getting stuck on evaluating such regexes, there is a maximum evaluation time limit in place. By default this is 0.2 seconds per regex call. You can adjust this limit using the variable `REGEX_TIME_LIMIT_SECONDS` in `config.py`.
+
+Be careful to use fast and simple regexes if at all possible. Try to limit the usage of `+`and `*` as much as possible, and completely avoid nested `+` or `*`. For example, do not use regexes like this:
+
+```
+(a+)+b
+```
+
+So either use `+`/`*` inside or outside of a set of parenthesis, not both.
+
+If the evaluation is interrupted due to it taking too long, the regex will not match and the post will not trigger any actions at all.

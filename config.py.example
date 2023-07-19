@@ -1,60 +1,21 @@
 #!/usr/bin/python
 # -*- coding: UTF8 -*-
 
+# Necessary for login
 API_URL = "https://feddit.de"
 USERNAME = "BOT NAME"
 PASSWORD = "BOT PASSWORD"
+
+# Optional configuration parameters
+
+# Output more information to stdout
+VERBOSE_MODE = True
+
+# Seconds between each API call to avoid rate limit errors for busy bots
 RATE_LIMIT_SECONDS = 0
+
+# Determines how often 
 CHECK_INTERVAL_SECONDS = 60
 
-COMMUNITY_CONFIGS = {
-	"COMMUNITY NAME": {
-		"triggers": [
-			{
-				"triggerType": "post_DuplicateUrl",
-				"actions": [
-					{
-						"type": "postComment",
-						"content": "This post has been locked because the linked URL is already discussed here: {existingPost.post.ap_id}."
-					},
-					{
-						"type": "lock",
-						"value": True
-					}
-				]
-			},
-			{
-				"triggerType": "post_Regex",
-				"fields": ["url", "name", "body"],
-				"regex": ".*reddit.*",
-				"actions": [
-					{
-						"type": "remove",
-						"value": True,
-						"reason": "This post was removed because bad words aren't allowed here!"
-					}
-				]
-			},
-			{
-				"triggerType": "comment_Regex",
-				"regex": ".*reddit.*",
-				"actions": [
-					{
-						"type": "edit",
-						"content": "[Removed by moderator. We don't want this kind of talk here.]"
-					}
-				]
-			},
-			{
-				"triggerType": "comment_Regex",
-				"regex": ".*lego.*",
-				"actions": [
-					{
-						"type": "postComment",
-						"content": "Seems like you are talking about Lego. Be aware, they might sue you if you write anything they don't like."
-					}
-				]
-			}
-		]
-	}
-}
+# Determines the maximum evaluation time that regexes are allowed to use
+REGEX_TIME_LIMIT_SECONDS = 0.2

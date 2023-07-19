@@ -1,12 +1,13 @@
 #!/usr/bin/python
 # -*- coding: UTF8 -*-
 
-from time import sleep
+from time import time, sleep
 from pythorhead import Lemmy
 from pythorhead.types.sort import SortType
 from pythorhead.types.listing import ListingType
 import re
 import json
+from timeout_decorator import timeout, TimeoutError
 
 try:
 	import config
@@ -17,6 +18,7 @@ except:
 	exit(1)
 
 lemmy = None
+communityConfig = {}
 communityData = {}
 MODBOT_USERID = 0
 
@@ -47,6 +49,17 @@ def templateString(template, data):
 				output += c
 	return output
 
+@timeout(seconds=config.REGEX_TIME_LIMIT_SECONDS)
+def _reMatchTimeout(regex, string, flags):
+	return re.match(regex, string, flags)
+
+def reMatchTimeout(regex, string, flags=0):
+	try:
+		return _reMatchTimeout(regex, string, flags)
+	except TimeoutError:
+		print("ERROR: Regex /{regex}/ timed out!")
+		return None
+
 def getNewComments(oldComments, printPageNr=False, community=None):
 	oldCommentIds = [ x["comment"]["id"] for x in oldComments ]
 	newComments = []
@@ -54,7 +67,7 @@ def getNewComments(oldComments, printPageNr=False, community=None):
 	page = 0
 	while current:
 		page += 1
-		if printPageNr:
+		if config.VERBOSE_MODE and printPageNr:
 			print(f"Page: {page}")
 		current = lemmy.comment.list(community_name=community, limit=50, page=page, sort=SortType.New, type_=ListingType.Subscribed)
 		current = [ x for x in current if x["comment"]["creator_id"] != MODBOT_USERID ]
@@ -62,7 +75,8 @@ def getNewComments(oldComments, printPageNr=False, community=None):
 		if any([ x for x in current if x["comment"]["id"] in oldCommentIds ]):
 			break
 		sleep(config.RATE_LIMIT_SECONDS)
-	print(f"New comments found: {len(newComments)}")
+	if config.VERBOSE_MODE:
+		print(f"New comments found: {len(newComments)}")
 	return newComments
 
 def getPostUrlMap(allPosts):
@@ -78,7 +92,7 @@ def getNewPosts(oldPosts, printPageNr=False, community=None):
 	page = 0
 	while current:
 		page += 1
-		if printPageNr:
+		if config.VERBOSE_MODE and printPageNr:
 			print(f"Page: {page}")
 		current = lemmy.post.list(community_name=community, limit=50, page=page, sort=SortType.New, type_=ListingType.Subscribed)
 		current = [ x for x in current if x["post"]["creator_id"] != MODBOT_USERID ]
@@ -86,7 +100,8 @@ def getNewPosts(oldPosts, printPageNr=False, community=None):
 		if any([ x for x in current if (not isPostFeatured(x)) and x["post"]["id"] in oldPostIds ]):
 			break
 		sleep(config.RATE_LIMIT_SECONDS)
-	print(f"New posts found: {len(newPosts)}")
+	if config.VERBOSE_MODE:
+		print(f"New posts found: {len(newPosts)}")
 	return newPosts
 
 def checkForNewDuplicatePosts(newPosts, oldPosts):
@@ -130,7 +145,7 @@ def checkCommentTrigger(trigger, newComments, oldComments):
 	if trigger["triggerType"] == "comment_Regex":
 		actionSubjectList = [{
 				"targetComment": x,
-			} for x in newComments if re.match(trigger["regex"], x["comment"]["content"], re.I)]
+			} for x in newComments if reMatchTimeout(trigger["regex"], x["comment"]["content"], re.I)]
 	return actionSubjectList
 
 def executeCommentActions(trigger, actionSubjectList):
@@ -147,7 +162,7 @@ def executeCommentActions(trigger, actionSubjectList):
 				lemmy.comment.remove(comment_id = commentId, removed = action.get("value", True), reason = reason)
 
 def processTriggers(newPosts, newComments, communityData):
-	for trigger in config.COMMUNITY_CONFIGS[community]["triggers"]:
+	for trigger in communityConfig[community]["triggers"]:
 		if trigger["triggerType"].startswith("post_"):
 			actionSubjectList = checkPostTrigger(trigger, newPosts, communityData[community]["oldPosts"])
 			executePostActions(trigger, actionSubjectList)
@@ -159,7 +174,7 @@ def getPostsRegexMatch(regex, posts, fields):
 	out = []
 	for post in posts:
 		for field in fields:
-			if field in post["post"] and re.match(regex, post["post"][field], re.I):
+			if field in post["post"] and reMatchTimeout(regex, post["post"][field], re.I):
 				out.append(post)
 				break
 	return out
@@ -172,7 +187,7 @@ def initializeCommunityData():
 			print("## Using cached community data")
 	except:
 		print("## Couldn't find cached community data, reading from API instead")
-	for community in config.COMMUNITY_CONFIGS:
+	for community in communityConfig:
 		if community not in communityData:
 			communityData[community] = {}
 		if "oldPosts" not in communityData[community]:
@@ -181,22 +196,23 @@ def initializeCommunityData():
 		if "oldComments" not in communityData[community]:
 			print(f"## Reading all existing comments in {community}")
 			communityData[community]["oldComments"] = getNewComments([], True, community)
-	allOldPosts = sum([ communityData[x]["oldPosts"] for x in config.COMMUNITY_CONFIGS ], [])
-	allOldComments = sum([ communityData[x]["oldComments"] for x in config.COMMUNITY_CONFIGS ], [])
+	allOldPosts = sum([ communityData[x]["oldPosts"] for x in communityConfig ], [])
+	allOldComments = sum([ communityData[x]["oldComments"] for x in communityConfig ], [])
 	print("## Done reading posts/comments. Starting loop.\n")
 
 def login():
 	global lemmy
 	lemmy = Lemmy(config.API_URL)
 	if not lemmy.log_in(config.USERNAME, config.PASSWORD):
-		print("Login failed. Exiting.")
+		print("ERROR: Login failed.")
+		print("Exiting now")
 		exit(1)
 
 def checkModBotUserData():
 	global MODBOT_USERID
 	user = lemmy.user.get(username=config.USERNAME, limit=1)
 	MODBOT_USERID = user["person_view"]["person"]["id"]
-	for community in config.COMMUNITY_CONFIGS:
+	for community in communityConfig:
 		if community not in [ x["community"]["name"] for x in user["moderates"] ]:
 			print(f"ERROR: {config.USERNAME} is not moderator in community {community}.")
 			print("Exiting now.")
@@ -216,29 +232,57 @@ def updateCommunitySubscriptions(userData):
 def splitPostsAndCommentsByCommunity(allNewPosts, allNewComments):
 	newPostsByCommunity = {}
 	newCommentsByCommunity = {}
-	for community in config.COMMUNITY_CONFIGS:
+	for community in communityConfig:
 		newPostsByCommunity[community] = [ x for x in allNewPosts if x["community"]["name"] == community ]
 		newCommentsByCommunity[community] = [ x for x in allNewComments if x["community"]["name"] == community ]
 	return (newPostsByCommunity, newCommentsByCommunity)
+
+def reloadCommunityConfig():
+	global communityConfig
+	if config.VERBOSE_MODE:
+		print(f"## Reloading community config")
+	text = None
+	try:
+		with open("communityConfig.json") as f:
+			text = f.read()
+	except:
+		print("ERROR: Could not read communityConfig.json. Did you create it?")
+		print("Exiting now")
+		exit(1)
+	try:
+		communityConfig = json.loads(text)
+	except:
+		print("ERROR: communityConfig.json is not valid JSON. Please run it through a JSON validator.")
+		print("Exiting now")
+		exit(1)
 
 
 if __name__ == "__main__":
 	login()
 	userData = checkModBotUserData()
+	reloadCommunityConfig()
 	updateCommunitySubscriptions(userData)
 	initializeCommunityData()
 	while True:
+		print("## Start polling all communities")
+		startTime = time()
+		reloadCommunityConfig()
 		allNewPosts = getNewPosts(allOldPosts)
 		allNewComments = getNewComments(allOldComments)
 		newPostsByCommunity, newCommentsByCommunity = splitPostsAndCommentsByCommunity(allNewPosts, allNewComments)
-		for community in config.COMMUNITY_CONFIGS:
-			print(f"## Start polling community \"{community}\"")
+		for community in communityConfig:
+			if config.VERBOSE_MODE:
+				print(f"## Start processing community \"{community}\"")
 			processTriggers(newPostsByCommunity[community], newCommentsByCommunity[community], communityData)
 			communityData[community]["oldPosts"] += newPostsByCommunity[community]
 			communityData[community]["oldComments"] += newCommentsByCommunity[community]
 		allOldPosts += allNewPosts
 		allOldComments += allNewComments
-		print("## Finished polling all communities\n")
-		with open("communityDataCache.json", "w") as f:
-			json.dump(communityData, f)
-		sleep(config.CHECK_INTERVAL_SECONDS)
+		if config.VERBOSE_MODE:
+			print("## Finished polling all communities\n")
+		if allNewPosts or allNewComments:
+			if config.VERBOSE_MODE:
+				print("## Updating community data cache\n")
+			with open("communityDataCache.json", "w") as f:
+				json.dump(communityData, f)
+		sleep(max(0,config.CHECK_INTERVAL_SECONDS-(time()-startTime)))
