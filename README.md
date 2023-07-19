@@ -39,7 +39,7 @@ COMMUNITY_CONFIGS = {
 				"actions": [
 					{
 						"type": "postComment",
-						"message": "This post has been locked because the linked URL is already discussed here: {existingPost[post][ap_id]}."
+						"content": "This post has been locked because the linked URL is already discussed here: {existingPost.post.ap_id}."
 					},
 					{
 						"type": "lock",
@@ -70,9 +70,24 @@ Next, each community has a list of triggers. Each trigger has a `triggerType` th
 
 - `post_DuplicateUrl`: Triggers whenever a new post is created that has the same URL as an already existing post in the same community.
 - `post_Regex`: Triggers whenever a new post is created that matches a given regex. It will run the `regex` against the values of the fields in the post defined by what's in `fields`.
+- `comment_Regex`: Triggers whenever a new comment is created that matches a given regex. It will run the `regex` only against the comment's text content.
 
 When a trigger is triggered, its `actions` will get executed from top to bottom. Currently these actions are available:
 
-- `postComment`: Creates a comment to the post. The content of the comment will be the `message`.
-- `lock`: Locks or unlocks the post. (`"value": True` means lock, `"value": False` means unlock)
-- `remove`: Removes or restores the post. (`"value": True` means remove, `"value": False means restore, `"reason"` contains the reason that is given in the modlog)
+- `postComment`: Creates a comment to the matching post/comment. The content of the comment will be the `message`.
+- `remove`: Removes or restores the post/comment. (`"value": True` means remove, `"value": False means restore, `"reason"` contains the reason that is given in the modlog)
+- `lock`: (Posts only) Locks or unlocks the post. (`"value": True` means lock, `"value": False` means unlock)
+
+The fields `content` and `reason` can use Python's string formatting to inject values from the affected posts/comments.
+
+For posts the target post (and in case of `post_DuplicateUrl`) the existing duplicate post are exposed as `targetPost` and `existingPost`. The same is done for comments with `targetComment`.
+ 
+These data structures are the full post/comment object as returned by the API. To use the values of these fields in `content`/`reason`, put it in curly braces. To step into the object, use dots, like so:
+
+```
+"{targetPost.post.url}" -> returns the URL the post links to.
+"{targetPost.post.name}" -> returns the title of the post.
+"{targetPost.post.body}" -> returns the text of the post.
+"{existingPost.post.ap_id}" -> returns the absolute URL to the post.
+"{targetComment.comment.content}" -> returns the text of the comment.
+```
