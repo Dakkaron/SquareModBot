@@ -160,7 +160,7 @@ def executeCommentActions(trigger, actionSubjectList):
 				print(f"-> Creating comment: {content}")
 				lemmy.comment.create(post_id = subject["targetComment"]["post"]["id"], parent_id = commentId, content = content)
 			elif action["type"] == "remove":
-				reason = templateString(action["reason"], {"targetComment": subject["targetPost"]})
+				reason = templateString(action["reason"], {"targetComment": subject["targetComment"]})
 				print(f"-> Removing comment {commentId} with the following reason: {reason}")
 				lemmy.comment.remove(comment_id = commentId, removed = action.get("value", True), reason = reason)
 
