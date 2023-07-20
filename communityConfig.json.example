@@ -17,6 +17,19 @@
 			{
 				"triggerType": "post_Regex",
 				"fields": ["url", "name", "body"],
+				"regex": "^\\[HELP\\].*",
+				"invert": true,
+				"actions": [
+					{
+						"type": "remove",
+						"value": true,
+						"reason": "Post titles need to start with \\[HELP\\]"
+					}
+				]
+			},
+			{
+				"triggerType": "post_Regex",
+				"fields": ["url", "name", "body"],
 				"regex": ".*reddit.*",
 				"actions": [
 					{

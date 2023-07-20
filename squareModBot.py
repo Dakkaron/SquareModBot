@@ -50,12 +50,15 @@ def templateString(template, data):
 	return output
 
 @timeout(seconds=config.REGEX_TIME_LIMIT_SECONDS)
-def _reMatchTimeout(regex, string, flags):
-	return re.match(regex, string, flags)
+def _reMatchTimeout(regex, string, flags, invertResult):
+	if invertResult:
+		return not re.match(regex, string, flags)
+	else:
+		return re.match(regex, string, flags)
 
-def reMatchTimeout(regex, string, flags=0):
+def reMatchTimeout(regex, string, flags=0, invertResult=False):
 	try:
-		return _reMatchTimeout(regex, string, flags)
+		return _reMatchTimeout(regex, string, flags, invertResult)
 	except TimeoutError:
 		print("ERROR: Regex /{regex}/ timed out!")
 		return None
@@ -120,7 +123,7 @@ def checkPostTrigger(trigger, newPosts, oldPosts):
 		actionSubjectList = [{
 				"targetPost": x,
 				"existingPost": x
-			} for x in getPostsRegexMatch(trigger["regex"], newPosts, trigger["fields"])]
+			} for x in getPostsRegexMatch(trigger["regex"], newPosts, trigger["fields"], trigger.get("invert"))]
 	return actionSubjectList
 
 def executePostActions(trigger, actionSubjectList):
@@ -145,7 +148,7 @@ def checkCommentTrigger(trigger, newComments, oldComments):
 	if trigger["triggerType"] == "comment_Regex":
 		actionSubjectList = [{
 				"targetComment": x,
-			} for x in newComments if reMatchTimeout(trigger["regex"], x["comment"]["content"], re.I)]
+			} for x in newComments if reMatchTimeout(trigger["regex"], x["comment"]["content"], re.I, trigger.get("invert"))]
 	return actionSubjectList
 
 def executeCommentActions(trigger, actionSubjectList):
@@ -170,11 +173,11 @@ def processTriggers(newPosts, newComments, communityData):
 			actionSubjectList = checkCommentTrigger(trigger, newComments, communityData[community]["oldComments"])
 			executeCommentActions(trigger, actionSubjectList)
 
-def getPostsRegexMatch(regex, posts, fields):
+def getPostsRegexMatch(regex, posts, fields, invertResult):
 	out = []
 	for post in posts:
 		for field in fields:
-			if field in post["post"] and reMatchTimeout(regex, post["post"][field], re.I):
+			if field in post["post"] and reMatchTimeout(regex, post["post"][field], re.I, invertResult):
 				out.append(post)
 				break
 	return out

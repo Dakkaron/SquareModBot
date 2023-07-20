@@ -43,19 +43,32 @@ For that, copy `communityConfig.json.example` to `communityConfig.json` and edit
 					},
 					{
 						"type": "lock",
-						"value": True
+						"value": true
 					}
 				]
 			},
 			{
 				"triggerType": "post_Regex",
 				"fields": ["url", "name", "body"],
+				"regex": "^\\[HELP\\].*",
+				"invert": true,
+				"actions": [
+					{
+						"type": "remove",
+						"value": true,
+						"reason": "Post titles need to start with \\[HELP\\]"
+					}
+				]
+			},
+			{
+				"triggerType": "comment_Regex",
+				"fields": ["url", "name", "body"],
 				"regex": ".*reddit.*",
 				"actions": [
 					{
 						"type": "remove",
-						"value": True,
-						"reason": "This post was removed because bad words aren't allowed here!"
+						"value": true,
+						"reason": "This comment was removed because bad words aren't allowed here!"
 					}
 				]
 			}
@@ -69,8 +82,8 @@ You need to put the name of the community as the key of the values in the top le
 Next, each community has a list of triggers. Each trigger has a `triggerType` that determines what the trigger reacts to. The currently available `triggerType`s are:
 
 - `post_DuplicateUrl`: Triggers whenever a new post is created that has the same URL as an already existing post in the same community.
-- `post_Regex`: Triggers whenever a new post is created that matches a given regex. It will run the `regex` against the values of the fields in the post defined by what's in `fields`.
-- `comment_Regex`: Triggers whenever a new comment is created that matches a given regex. It will run the `regex` only against the comment's text content.
+- `post_Regex`: Triggers whenever a new post is created that matches a given regex. It will run the `regex` against the values of the fields in the post defined by what's in `fields`. If the field `invert` is provided and set to `true`, only posts NOT matching the regex will trigger.
+- `comment_Regex`: Triggers whenever a new comment is created that matches a given regex. It will run the `regex` only against the comment's text content. If the field `invert` is provided and set to `true`, only comments NOT matching the regex will trigger.
 
 When a trigger is triggered, its `actions` will get executed from top to bottom. Currently these actions are available:
 
