@@ -133,7 +133,12 @@ def executePostActions(trigger, actionSubjectList):
 			if action["type"] == "postComment":
 				content = templateString(action["content"], {"targetPost": subject["targetPost"], "existingPost": subject["existingPost"]})
 				print(f"-> Creating comment: {content}")
-				lemmy.comment.create(post_id = postId, content = content)
+				newComment = lemmy.comment.create(post_id = postId, content = content)
+				
+				if action["distinguish"] == True:
+					print(f"-> Distinguishing (Mark as Modcomment) comment: {content}")
+					lemmy.comment.distinguish(newComment["comment_view"]["comment"]["id"], True)
+
 			elif action["type"] == "lock":
 				print(f"-> Locking post: {postId}")
 				lemmy.post.lock(post_id = postId, locked = action.get("value", True))
@@ -162,7 +167,12 @@ def executeCommentActions(trigger, actionSubjectList):
 			if action["type"] == "postComment":
 				content = templateString(action["content"], {"targetComment": subject["targetComment"]})
 				print(f"-> Creating comment: {content}")
-				lemmy.comment.create(post_id = subject["targetComment"]["post"]["id"], parent_id = commentId, content = content)
+				newComment = lemmy.comment.create(post_id = subject["targetComment"]["post"]["id"], parent_id = commentId, content = content)
+
+				if action["distinguish"] == True:
+					print(f"-> Distinguishing (Mark as Modcomment) comment: {content}")
+					lemmy.comment.distinguish(newComment["comment_view"]["comment"]["id"], True)
+
 			elif action["type"] == "remove":
 				reason = templateString(action["reason"], {"targetComment": subject["targetComment"]})
 				print(f"-> Removing comment {commentId} with the following reason: {reason}")
