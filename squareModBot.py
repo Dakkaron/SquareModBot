@@ -135,7 +135,7 @@ def executePostActions(trigger, actionSubjectList):
 				print(f"-> Creating comment: {content}")
 				newComment = lemmy.comment.create(post_id = postId, content = content)
 				
-				if action["modComment"] == True:
+				if action["distinguish"] == True:
 					print(f"-> Distinguishing (Mark as Modcomment) comment: {content}")
 					lemmy.comment.distinguish(newComment["comment_view"]["comment"]["id"], True)
 
@@ -169,7 +169,7 @@ def executeCommentActions(trigger, actionSubjectList):
 				print(f"-> Creating comment: {content}")
 				newComment = lemmy.comment.create(post_id = subject["targetComment"]["post"]["id"], parent_id = commentId, content = content)
 
-				if action["modComment"] == True:
+				if action["distinguish"] == True:
 					print(f"-> Distinguishing (Mark as Modcomment) comment: {content}")
 					lemmy.comment.distinguish(newComment["comment_view"]["comment"]["id"], True)
 

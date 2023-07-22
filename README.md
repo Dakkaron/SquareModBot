@@ -87,9 +87,9 @@ Next, each community has a list of triggers. Each trigger has a `triggerType` th
 
 When a trigger is triggered, its `actions` will get executed from top to bottom. Currently these actions are available:
 
-- `postComment`: Creates a comment to the matching post/comment. The content of the comment will be the `message`. With `"modComment": true` the comment gets automatically marked as a mod comment.
-- `remove`: Removes or restores the post/comment. (`"value": True` means remove, `"value": False means restore, `"reason"` contains the reason that is given in the modlog)
-- `lock`: (Posts only) Locks or unlocks the post. (`"value": True` means lock, `"value": False` means unlock)
+- `postComment`: Creates a comment to the matching post/comment. The content of the comment will be the `message`. With `"distinguish": true` the comment gets automatically marked as a mod comment.
+- `remove`: Removes or restores the post/comment. (`"value": true` means remove, `"value": false means restore, `"reason"` contains the reason that is given in the modlog)
+- `lock`: (Posts only) Locks or unlocks the post. (`"value": true` means lock, `"value": false` means unlock)
 - `report`: Reports a post or a comment to the moderators. `reason` contains the reason for the report.
 
 The fields `content` and `reason` can use Python's string formatting to inject values from the affected posts/comments.
