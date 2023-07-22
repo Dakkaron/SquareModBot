@@ -2,7 +2,7 @@
 # -*- coding: UTF8 -*-
 
 from time import time, sleep
-from pythorhead import Lemmy
+from pythorhead import Lemmy, requestor
 from pythorhead.types.sort import SortType
 from pythorhead.types.listing import ListingType
 import re
@@ -162,7 +162,15 @@ def executeCommentActions(trigger, actionSubjectList):
 			if action["type"] == "postComment":
 				content = templateString(action["content"], {"targetComment": subject["targetComment"]})
 				print(f"-> Creating comment: {content}")
-				lemmy.comment.create(post_id = subject["targetComment"]["post"]["id"], parent_id = commentId, content = content)
+				newComment = lemmy.comment.create(post_id = subject["targetComment"]["post"]["id"], parent_id = commentId, content = content)
+
+
+				if action["modComment"] == True:
+					#Apperently pythorhead doesn't correctly implement the way to distinguish a comment
+					#so we have to do it this way, for now.
+					print(f"-> Distinguishing (Mark as Modcomment) comment: {content}")
+					lemmy.comment._requestor.api(requestor.Request.POST, "/comment/distinguish", json={"comment_id" : newComment["comment_view"]["comment"]["id"], "distinguished" : True })
+
 			elif action["type"] == "remove":
 				reason = templateString(action["reason"], {"targetComment": subject["targetComment"]})
 				print(f"-> Removing comment {commentId} with the following reason: {reason}")
