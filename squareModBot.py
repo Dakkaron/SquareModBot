@@ -22,7 +22,6 @@ communityConfig = {}
 communityData = {}
 MODBOT_USERID = 0
 
-
 def templateString(template, data):
 	output = ""
 	inBracket = False
@@ -129,19 +128,23 @@ def checkPostTrigger(trigger, newPosts, oldPosts):
 def executePostActions(trigger, actionSubjectList):
 	for action in trigger["actions"]:
 		for subject in actionSubjectList:
+			postId = subject['targetPost']['post']['id']
+
 			if action["type"] == "postComment":
 				content = templateString(action["content"], {"targetPost": subject["targetPost"], "existingPost": subject["existingPost"]})
 				print(f"-> Creating comment: {content}")
-				lemmy.comment.create(post_id = subject["targetPost"]["post"]["id"], content = content)
+				lemmy.comment.create(post_id = postId, content = content)
 			elif action["type"] == "lock":
-				postId = subject['targetPost']['post']['id']
 				print(f"-> Locking post: {postId}")
 				lemmy.post.lock(post_id = postId, locked = action.get("value", True))
 			elif action["type"] == "remove":
-				postId = subject['targetPost']['post']['id']
 				reason = templateString(action["reason"], {"targetPost": subject["targetPost"], "existingPost": subject["existingPost"]})
 				print(f"-> Removing post {postId} with the following reason: {reason}")
 				lemmy.post.remove(post_id = postId, removed = action.get("value", True), reason = reason)
+			elif action["type"] == "report":	
+				reason = templateString(action["reason"], {"targetPost": subject["targetPost"]})
+				print(f"-> Reporting post {postId} for the following reason: {reason}")
+				lemmy.post.report(post_id = postId, reason = reason)
 
 def checkCommentTrigger(trigger, newComments, oldComments):
 	actionSubjectList = []
@@ -155,6 +158,7 @@ def executeCommentActions(trigger, actionSubjectList):
 	for action in trigger["actions"]:
 		for subject in actionSubjectList:
 			commentId = subject['targetComment']['comment']['id']
+
 			if action["type"] == "postComment":
 				content = templateString(action["content"], {"targetComment": subject["targetComment"]})
 				print(f"-> Creating comment: {content}")
@@ -163,6 +167,10 @@ def executeCommentActions(trigger, actionSubjectList):
 				reason = templateString(action["reason"], {"targetComment": subject["targetComment"]})
 				print(f"-> Removing comment {commentId} with the following reason: {reason}")
 				lemmy.comment.remove(comment_id = commentId, removed = action.get("value", True), reason = reason)
+			elif action["type"] == "report":
+				reason = templateString(action["reason"], {"targetComment": subject["targetComment"]})
+				print(f"-> Reporting commend {commentId} for the following reason: {reason}")
+				lemmy.comment.report(comment_id = commentId, reason = reason)
 
 def processTriggers(newPosts, newComments, communityData):
 	for trigger in communityConfig[community]["triggers"]:
